@@ -1,0 +1,30 @@
+.form-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  width: 300px;
+  height: 100vh;
+  margin: auto;
+  //   background-color: #fff;
+
+  .form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 56px;
+    color: #fff;
+    .left-text {
+      font-size: 16px;
+    }
+
+    .right-text {
+      font-size: 12px;
+      opacity: 0.3;
+      cursor: pointer;
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+  }
+}
