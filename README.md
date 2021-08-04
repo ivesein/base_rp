@@ -68,3 +68,188 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `yarn build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+config-overrides
+const {
+  override,
+  fixBabelImports,
+  addWebpackPlugin,
+  adjustStyleLoaders,
+  addWebpackAlias,
+  overrideDevServer,
+} = require("customize-cra");
+
+const AntdDayjsWebpackPlugin = require("antd-dayjs-webpack-plugin");
+const path = require("path");
+const webpack = require("webpack");
+const isDEV = process.env.NODE_ENV === "development"; //引入当前的node环境
+const BUILD_ENV = process.env.BUILD_ENV; //引入当前的cross-env build环境
+const {
+  TEST_BUILD_URL, //测试环境线上地址
+  DEV_BUILD_URL, //开发环境线上地址
+  GATEWAY_URL_PREFIX, //后台服务API接口网关转发修正前缀
+  OUTPUT_PORT, //线上部署访问端口
+  GATEWAY_PORT, //线上部署后台接口服务端口
+} = require("./build_options.js");
+const devServerConfig = () => (config) => {
+  return {
+    ...config,
+    proxy: {
+      "/api": {
+        target: "http://192.168.11.118:30071",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/api": "",
+        },
+      },
+      "/noticeApi": {
+        // target: "http://192.168.112.220:18089/jjsk_notice",
+        target: "http://192.168.11.118:30071/notification",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/noticeApi": "",
+        },
+      },
+      "/messageApi": {
+        target: "http://192.168.11.118:30071/notification",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/messageApi": "",
+        },
+      },
+      "/authApi": {
+        target: "http://192.168.11.118:30071/userperm",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/authApi": "",
+        },
+      },
+      "/sysApi": {
+        target: "http://192.168.11.118:30071/sysmange",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/sysApi": "",
+        },
+      },
+      "/monitorApi": {
+        target: "http://192.168.11.118:30071/sys_log",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/monitorApi": "",
+        },
+      },
+      "/workflowApi": {
+        target: "http://192.168.1.252:18080",
+        changeOrigin: true,
+        pathRewrite: {
+          "^/workflowApi": "",
+        },
+      },
+    },
+  };
+};
+
+module.exports = {
+  webpack: override(
+    fixBabelImports("import", {
+      libraryName: "antd",
+      libraryDirectory: "es",
+      style: "css",
+    }),
+    addWebpackPlugin(new AntdDayjsWebpackPlugin()),
+    addWebpackPlugin(
+      new webpack.DefinePlugin({
+        "process.env.CURRENT_BUILD_ENV": JSON.stringify(BUILD_ENV),
+        "process.env.ENTRY_PORT": isDEV
+          ? JSON.stringify(process.env.PORT)
+          : JSON.stringify(OUTPUT_PORT),
+        "process.env.ENTRY_PATH":
+          BUILD_ENV === "develop"
+            ? JSON.stringify(DEV_BUILD_URL)
+            : BUILD_ENV === "release"
+            ? JSON.stringify(TEST_BUILD_URL)
+            : JSON.stringify("http://localhost"),
+        "process.env.API_BASE":
+          BUILD_ENV === "develop"
+            ? JSON.stringify(
+                DEV_BUILD_URL + ":" + GATEWAY_PORT + GATEWAY_URL_PREFIX
+              )
+            : BUILD_ENV === "release"
+            ? JSON.stringify(
+                TEST_BUILD_URL + ":" + GATEWAY_PORT + GATEWAY_URL_PREFIX
+              )
+            : JSON.stringify(""),
+      })
+    ),
+    adjustStyleLoaders((rule) => {
+      if (rule.test.toString().includes("scss")) {
+        rule.use.push({
+          loader: require.resolve("sass-resources-loader"),
+          options: {
+            resources: ["./src/styles/main.scss"],
+          },
+        });
+      }
+    }),
+    addWebpackAlias({
+      ["@"]: path.resolve(__dirname, "src"),
+    })
+  ),
+  devServer: overrideDevServer(devServerConfig()),
+};
+package.json
+{
+  "name": "base_react_project",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
+    "antd": "^4.10.1",
+    "antd-dayjs-webpack-plugin": "^1.0.4",
+    "axios": "^0.21.1",
+    "babel-plugin-import": "^1.13.3",
+    "node-sass": "4.14.1",
+    "qiankun": "^2.3.6",
+    "react": "^17.0.1",
+    "react-dom": "^17.0.1",
+    "react-router-dom": "^5.2.0",
+    "react-scripts": "4.0.1",
+    "sass-resources-loader": "^2.1.1",
+    "universal-cookie": "^4.0.4",
+    "web-vitals": "^0.2.4"
+  },
+  "scripts": {
+    "start": "react-app-rewired start",
+    "build:develop": "cross-env BUILD_ENV=develop react-app-rewired build",
+    "build:release": "cross-env BUILD_ENV=release react-app-rewired build",
+    "build:dev": "cross-env BUILD_ENV=development react-app-rewired build",
+    "test": "react-app-rewired test",
+    "eject": "react-app-rewired eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "customize-cra": "^1.0.0",
+    "react-app-rewired": "^2.1.8"
+  }
+}
+
